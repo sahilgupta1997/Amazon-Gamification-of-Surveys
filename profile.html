@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
+    <script type="text/javascript">
+    AWS.config.update({
+        region: "us-east-1",
+        // The endpoint should point to the local or remote computer where DynamoDB (downloadable) is running.
+        //endpoint: 'https://sts.us-east-1.amazonaws.com',
+        /*
+        accessKeyId and secretAccessKey defaults can be used while using the downloadable version of DynamoDB. 
+        For security reasons, do not store AWS Credentials in your files. Use Amazon Cognito instead.
+        */
+        accessKeyId: "AKIAIX6MZFO2MPKPW3IA",
+        secretAccessKey: "g4LHQF3iKi3wtJZ1902BNIyPY77PcvNwvEMpuSfV"
+    });
+    
+
+        /* 
+        Uncomment the following code to configure Amazon Cognito and make sure to 
+        remove the endpoint, accessKeyId and secretAccessKey specified in the code above. 
+        Make sure Cognito is available in the DynamoDB web service region (specified above).
+        Finally, modify the IdentityPoolId and the RoleArn with your own.
+        */
+    /*
+    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+    IdentityPoolId: "us-west-2:12345678-1ab2-123a-1234-a12345ab12",
+    RoleArn: "arn:aws:iam::123456789012:role/dynamocognito"
+    });
+    */
+    var dynamodb = new AWS.DynamoDB();
+    var docClient = new AWS.DynamoDB.DocumentClient();
+    /*
+
+    function deleteSurveyResponses(){
+        var params = {
+            TableName : "Survey_Responses"
+        };
+    
+        dynamodb.deleteTable(params, function(err, data) {
+            if (err) {
+                document.getElementById('textarea').innerHTML = "Unable to delete table: " + "\n" + JSON.stringify(err, undefined, 2);
+            } else {
+                document.getElementById('textarea').innerHTML = "Table deleted.";
+            }
+        });
+    }*/
+    function retrieveDates(username) {
+        var ScanParams1 = {
+            TableName: "Logins"
+        };
+        docClient.scan(ScanParams1, onScan);
+        function onScan(err, data) {
+            if (err) {
+                console.log("an error occurred: ", err)
+            } else {
+                var logged = []
+                data.Items.forEach(function(user) {
+                    if(user.username == username){
+                        logged = user.dates
+                    }
+                });
+                console.log("inside retrieveDates")
+                console.log("logged: " + logged)
+            }
+        }
+    }
+
+    function getUserInfo() {
+        
+        //parse and retrieve user and pass from URL
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        username = queries[0].substr(6)
+        password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        document.getElementById("myUser").innerHTML = "Username: " + username;
+        console.log("4")
+        //define some variables to retrieve from the table
+        var ScanParams = {
+            TableName: "UserInfo"
+        };
+        docClient.scan(ScanParams, onScan);
+
+        function onScan(err, data) {
+            if (err) {
+                console.log("an error occurred: ", err);
+            } else {
+                data.Items.forEach(function(user) {
+                    console.log(user.user, user.pass);
+                    if(user.user == username && user.pass == password){
+                        //console.log("user found with response number: ", user.responseNumber)
+                        //document.getElementById("myRank").innerHTML = user.rank;
+                        console.log(user);
+                        document.getElementById("myPoints").innerHTML = "Points: " + user.points;
+                        console.log(user.points);
+                        points = user.points;
+                        //rank = user.rank
+                        //points = user.points
+                        if (points < 10000) {
+                            document.getElementById("myRank").innerHTML = "Rank: Novice";
+                        }
+                        if (points >= 10000 && points < 20000) {
+                            document.getElementById("myRank").innerHTML = "Rank: Apprentice";
+                        }
+                        else if (points >= 20000 && points < 50000 ) {
+                            document.getElementById("myRank").innerHTML = "Rank: Journeyman";
+                        }
+                        else if (points >= 50000 && points < 100000 ) {
+                            document.getElementById("myRank").innerHTML = "Rank: Craftsman";
+                        }
+                        else if (points >= 100000 && points < 500000 ) {
+                            document.getElementById("myRank").innerHTML = "Rank: Master Craftsman";
+                        }
+                        else if (points >= 500000) {
+                            document.getElementById("myRank").innerHTML = "Rank: Entrepreneur";
+                        }
+
+                        //BADGE CODE
+                        
+                        //if completed first survey "First Timer"
+                        var elem = document.getElementById("pbar1");
+                        if (user.responseNumber > 0) {
+                            elem.style.width = 100 + '%';
+                            elem.innerHTML = 'Completed!';
+                        }
+                    
+                        elem = document.getElementById("pbar2");
+                        //if 10 surveys ("smooth sailing")
+                        if (user.responseNumber >= 10) {
+                            elem.style.width = 100 + '%';
+                            elem.innerHTML = 'Completed!';
+                        }
+                        else {
+                            elem.style.width = user.responseNumber*10 + '%';
+                            elem.innerHTML = user.responseNumber + '/10';
+                        }
+
+                        elem = document.getElementById("pbar3");
+                        //beyond the first rank "Experienced"
+                        if (points >= 10000) {
+                            elem.style.width = 100 + '%';
+                            elem.innerHTML = 'Completed!';
+                        }
+                        else {
+                            elem.style.width = points/100 + '%';
+                            elem.innerHTML = points + '/10000';
+                        }
+
+                        elem = document.getElementById("pbar7");
+                        //reach final rank "seen it all"
+                        if (points >= 500000) {
+                            elem.style.width = 100 + '%';
+                            elem.innerHTML = 'Completed!';
+                        }
+                        else {
+                            elem.style.width = points/5000 + '%';
+                            elem.innerHTML = points + '/500000';
+                        }
+
+                        //var dateList = retrieveDates(user.user)
+                        //console.log("This is the date list: " + dateList)
+                        var ScanParams1 = {
+                            TableName: "Logins"
+                        };
+                        docClient.scan(ScanParams1, onScan);
+                        function onScan(err, data) {
+                            if (err) {
+                                console.log("an error occurred: ", err)
+                            } else {
+                                var totalLogin = 0
+                                data.Items.forEach(function(user) {
+                                    if(user.username == username){
+                                        totalLogin = user.cummulative
+                                    }
+                                });
+                                console.log("inside retrieveDates")
+                                console.log("logged: " + totalLogin)
+
+                                elem = document.getElementById("pbar8");
+                                //reach final rank "seen it all"
+                                if (totalLogin >= 50) {
+                                    elem.style.width = 100 + '%';
+                                    elem.innerHTML = 'Completed!';
+                                }
+                                else {
+                                    elem.style.width = totalLogin/50 + '%';
+                                    elem.innerHTML = totalLogin + '/50';
+                                }
+
+                                elem = document.getElementById("pbar9");
+                                //reach final rank "seen it all"
+                                if (totalLogin >= 100) {
+                                    elem.style.width = 100 + '%';
+                                    elem.innerHTML = 'Completed!';
+                                }
+                                else {
+                                    elem.style.width = totalLogin/100 + '%';
+                                    elem.innerHTML = totalLogin + '/100';
+                                }
+
+                                elem = document.getElementById("pbar10");
+                                //reach final rank "seen it all"
+                                if (totalLogin >= 300) {
+                                    elem.style.width = 100 + '%';
+                                    elem.innerHTML = 'Completed!';
+                                }
+                                else {
+                                    elem.style.width = totalLogin/300 + '%';
+                                    elem.innerHTML = totalLogin + '/300';
+                                }
+                                
+                            }
+                        }
+                    }
+
+
+                });
+                
+            }
+        }
+    }
+
+ //******TBD BACKEND - user points usage
+ //<Minigames portion - ADD BACKEND DYNAMODB subtract user points by 100 for each play>
+    function createTetrisMiniGame(){
+        //subtract 100 points from user
+    var doNotPlay = false;
+    var points = 1000;
+    var responseNumber = 0;
+
+    var queryString = decodeURIComponent(window.location.search); //parsing
+
+    queryString = queryString.substring(1);
+    var queries = queryString.split("&");
+    console.log(queries)
+    username = queries[0].substr(6)
+    password = queries[1].substr(6)
+    console.log(username)
+    console.log(password)
+    document.getElementById("myUser").innerHTML = "Username: " + username;
+    console.log("4")
+    //define some variables to retrieve from the table
+    var ScanParams = {
+        TableName: "UserInfo"
+    };
+    docClient.scan(ScanParams, onScan);
+
+    function onScan(err, data) {
+        
+        if (err) {
+            console.log("an error occurred: ", err);
+        } else {
+            data.Items.forEach(function(user) {
+                console.log(user.user, user.pass);
+                if(user.user == username && user.pass == password){
+                    //console.log("user found with response number: ", user.responseNumber)
+                    //document.getElementById("myRank").innerHTML = user.rank;
+                    console.log(user);
+                    console.log(user.points);
+                    responseNumber = user.responseNumber;
+                    points = user.points;
+                    //rank = user.rank
+                    //points = user.points
+                    if (points < 100) {
+                        doNotPlay = true;
+                        window.alert("You Do Not Have Atleast 100 Points");
+                    }else{
+                        if(confirm("Are You Sure You Want to Redeem 100 points to Play a Game of Tetris?")){
+                            points = points - 100;
+                            console.log("points subtracted");
+                        }
+                        else{
+                            doNotPlay = true;
+                        }
+
+                    }
+                }
+            });
+
+            console.log("asdfadsf");
+    console.log(doNotPlay);
+    if(!doNotPlay){
+        console.log("posting");
+        var params2 = {
+            TableName: "UserInfo",
+            Key:{
+                "user": username
+            },
+            UpdateExpression: "set responseNumber = :r, points = :s", //rank = :w",
+            ExpressionAttributeValues:{
+            ":r": responseNumber,
+            ":s": points,
+            //":w": rank
+            },
+            ReturnValues:"UPDATED_NEW"
+        };
+                  
+        docClient.update(params2, function(err2, data2) {
+            if (err2) {
+                console.log(err2);
+                console.log("error occured");
+            } else {
+        
+            }
+        });
+        window.location.href = "Tetris.html" + "?para1=" + username + "&para2=" + password
+    }else {
+        console.log("could not play");
+    }
+        }
+    }
+    //var ScanParams = {
+    //    TableName: "UserInfo"
+    //};
+    //docClient.scan(ScanParams, onScan);
+    //function onScan(err, data){
+    //    if (err){
+    //        console.log("error has occured");
+    //    }
+    //    else{
+    //        console.log(data)
+    //        if(user.points >= 100){
+    //            user.points -= 100
+    //            window.location.href = "Tetris.html"
+    //        }
+    //        else{
+                //not enough points
+    //       }
+
+    //        }
+    //    }   
+        
+    }
+
+
+
+
+  function createSnakeMiniGame(){
+
+    //subtract 100 points from user
+    var doNotPlay = false;
+    var points = 1000;
+    var responseNumber = 0;
+
+    var queryString = decodeURIComponent(window.location.search); //parsing
+
+    queryString = queryString.substring(1);
+    var queries = queryString.split("&");
+    console.log(queries)
+    username = queries[0].substr(6)
+    password = queries[1].substr(6)
+    console.log(username)
+    console.log(password)
+    document.getElementById("myUser").innerHTML = "Username: " + username;
+    console.log("4")
+    //define some variables to retrieve from the table
+    var ScanParams = {
+        TableName: "UserInfo"
+    };
+    docClient.scan(ScanParams, onScan);
+
+    function onScan(err, data) {
+        
+        if (err) {
+            console.log("an error occurred: ", err);
+            
+
+        } else {
+            
+            data.Items.forEach(function(user) {
+                console.log(user.user, user.pass);
+                if(user.user == username && user.pass == password){
+                    //console.log("user found with response number: ", user.responseNumber)
+                    //document.getElementById("myRank").innerHTML = user.rank;
+                    console.log(user);
+                    console.log(user.points);
+                    responseNumber = user.responseNumber;
+                    points = user.points;
+                    //rank = user.rank
+                    //points = user.points
+                    if (points < 100) {
+                        doNotPlay = true;
+                        window.alert("You Do Not Have Atleast 100 Points");
+                    }else{
+                        if(confirm("Are You Sure You Want to Redeem 100 Points to Play a Game of Snake?")){
+                            points = points - 100;
+                            console.log("points subtracted");
+                        }
+                        else{
+                            doNotPlay = true; //user clicked Cancel
+                        }
+                    }
+                }
+            });
+
+            console.log("asdfadsf");
+    console.log(doNotPlay);
+    if(!doNotPlay){
+        console.log("posting");
+        var params2 = {
+            TableName: "UserInfo",
+            Key:{
+                "user": username
+            },
+            UpdateExpression: "set responseNumber = :r, points = :s", //rank = :w",
+            ExpressionAttributeValues:{
+            ":r": responseNumber,
+            ":s": points,
+            //":w": rank
+            },
+            ReturnValues:"UPDATED_NEW"
+        };
+                  
+        docClient.update(params2, function(err2, data2) {
+            if (err2) {
+                console.log(err2);
+                console.log("error occured");
+            } else {
+        
+            }
+        });
+        window.location.href = "SnakeGame.html" + "?para1=" + username + "&para2=" + password
+    }else { 
+        console.log("could not play");
+    }
+        }
+    }
+
+        
+    
+    
+  }
+
+  function listSurveyResponses() {
+    var params = {};
+      dynamodb.listTables(params, function(err, data) {
+      if (err){
+          document.getElementById('textarea').innerHTML = "Unable to list tables: " + "\n" + JSON.stringify(err, undefined, 2);
+      }
+      else{
+       document.getElementById('textarea').innerHTML = "List of tables: " + "\n" + JSON.stringify(data, undefined, 2);
+      }
+  });
+  }
+  
+  function createSurvey() {
+    var queryString = decodeURIComponent(window.location.search); //parsing
+    queryString = queryString.substring(1);
+    var queries = queryString.split("&");
+    console.log(queries)
+    var username = queries[0].substr(6)
+    var password = queries[1].substr(6)
+    console.log(username)
+    console.log(password)
+
+    var ScanParams = {
+        TableName: "UserInfo"
+    };
+    var responseNumber = -1
+    var points = -1
+    //var rank = ""
+    docClient.scan(ScanParams, onScan);
+  
+      function onScan(err, data) {
+          if (err) {
+              console.log("an error occurred: ", err)
+          } else {
+              // get the necessary information
+            console.log("scan succeeded: ", data)
+            data.Items.forEach(function(user) {
+                if(user.user == username && user.pass == password){
+                console.log("user found with response number: ", user.responseNumber)
+                responseNumber = user.responseNumber
+                points = user.points
+                //rank = user.rank
+                }
+                
+            });
+
+            let uniqueID = 0;
+            for (let i = 0; i < (username + password).length; i++) {
+            uniqueID += parseInt((username + password)[i].charCodeAt(0));
+            }
+
+            responseNumber = responseNumber + 1
+            points = points + 500
+            uniqueID = uniqueID + 10000*responseNumber
+            
+            /*
+            //update ranks
+            if (points >= 10000 && points < 20000) {
+                rank = "Apprentice"
+            }
+            else if (points >= 20000 && points < 50000 ) {
+                rank = "Journeyman"
+            }
+            else if (points >= 50000 && points < 100000 ) {
+                rank = "Craftsman"
+            }
+            else if (points >= 100000 && points < 500000 ) {
+                rank = "Master Craftsman"
+            }
+            else if (points > 500000) {
+                rank = "Entrepreneur"
+            }*/
+
+            console.log(responseNumber)
+            var params = {
+                  TableName :"Survey_Responses",
+                  Item: {
+                      "surveyID": uniqueID,
+                      "response 1": document.getElementById('response1').value,
+                      "response 2": document.getElementById('response2').value,
+                      "response 3": document.getElementById('response3').value,
+                      "response 4": document.getElementById('response4').value,
+                      "response 5": document.getElementById('response5').value,
+                      "response 6": document.getElementById('response6').value,
+                      "response 7": document.getElementById('response7').value,
+                      "response 8": document.getElementById('response8').value,
+                      "response 9": document.getElementById('response9').value,
+                      "response 10": document.getElementById('response10').value,
+                      "response 11": document.getElementById('response11').value
+                  }
+              };
+              docClient.put(params, function(err, data) {
+                  if (err) {
+                      document.getElementById('textarea').innerHTML = "Unable to add item: " + "\n" + JSON.stringify(err, undefined, 2);
+                  } else {
+                      document.getElementById('textarea').innerHTML = "PutItem succeeded: " + "\n" + JSON.stringify(data, undefined, 2);
+                    
+                      var table = "UserInfo";
+                      var user = username;
+                      var pass = password;
+                  
+                      var params2 = {
+                          TableName: table,
+                          Key:{
+                              "user": user
+                          },
+                          UpdateExpression: "set responseNumber = :r, points = :s", //rank = :w",
+                          ExpressionAttributeValues:{
+                            ":r": responseNumber,
+                            ":s": points,
+                            //":w": rank
+                          },
+                          ReturnValues:"UPDATED_NEW"
+                      };
+                  
+                      docClient.update(params2, function(err2, data2) {
+                          if (err2) {
+                              document.getElementById('textarea').innerHTML = "Unable to update item: " + "\n" + JSON.stringify(err2, undefined, 2);
+                          } else {
+                                var queryString = "?para1=" + username + "&para2=" + password;
+                                window.location.href = "home.html" + queryString;
+                                console.log("sdfsdf")
+                              document.getElementById('textarea').innerHTML = "UpdateItem succeeded: " + "\n" + JSON.stringify(data2, undefined, 2);
+                          }
+                      });
+                      
+                  }
+              });
+  
+              // Continue scanning if we have more movies (per scan 1MB limitation)
+                        
+          }
+            
+      }
+
+    
+  }
+  function loadHome() {
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        var username = queries[0].substr(6)
+        var password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        var queryString = "?para1=" + username + "&para2=" + password;
+        window.location.href = "home.html" + queryString;
+    }
+    function loadSurvey() {
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        var username = queries[0].substr(6)
+        var password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        var queryString = "?para1=" + username + "&para2=" + password;
+        window.location.href = "index.html" + queryString;
+    }
+    function loadSignOut() {
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        var username = queries[0].substr(6)
+        var password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        var queryString = "?para1=" + username + "&para2=" + password;
+        window.location.href = "login.html"// + queryString; send user to login page without parameters
+    }
+  
+</script>
+<style>
+
+    body {
+    background-color: rgb(35, 47, 62);
+    
+    }
+
+    #pbar{
+        width:40%;
+        height: 2em;
+        background-color:#131A22;
+        border-radius: 1.5em;
+        color: #FEBD69;
+    }
+    .progbar{
+        background-color: #FF9900;
+        text-align:center;
+        height: 2em;
+        width: 0%;
+        border-radius: 1.5em;
+        color:#131A22;
+    }
+    button{
+        background-color: #ff990f;
+        border: none;
+        color: #373737;
+        padding: 16px 32px;
+        text-decoration: none;
+        margin: 4px 2px;
+        cursor: pointer;
+    }
+    h1{
+        color: #FEBD69;
+    }
+    h2{
+        color: #FEBD69;
+    }
+    th{
+        color: #FEBD69;
+    }
+    h3{
+        color: #FEBD69;
+    }
+
+    h5{
+        color: #FEBD69;
+    }
+
+
+
+
+</style>
+    
+    <h1><b><u><center>Welcome to your profile page</center></u></b></h1>
+    <body onload="getUserInfo()">
+        <center>
+        <h2 id="myUser"></h2>
+        <h2 id="myPoints"></h2>
+        <h2 id="myRank"></h2>
+        <h2>Accomplishments</h2>
+        </center>
+        <!--<center>-->
+            <center>
+        <table style = "width:80%">
+            <tr>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="firstTimer" src="badges\FirstTimerBadge.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                Achieved by completing a survey for the first time!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar1" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+                <th style="width: 10%"></th>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="smoothSailing" src="badges\SmoothSailingBadge.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                For turning survey completion into a habit! Complete 10 Surveys!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar2" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+            </tr>
+            <tr>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="experienced" src="badges\ExperiencedBadge.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                Earning points is easy for a veteran! Earn 10,000 points!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar3" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+                <th style="width: 10%"></th>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="stacking" src="badges\RockandRoll.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                Turning survey completion into a habit! Complete surveys for 7 days straight!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar4" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+            </tr>
+            <tr>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="beenToTheTop" src="badges\BeenToTheTopBadge.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                Having earned enough points to triumph and rise to the top! Appear on the leaderboard at least once! 
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar5" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+                <th style="width: 10%"></th>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="worldTop" src="badges\WorldTopBadge.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                The one who has stood above all others! Earn the position of number 1 on the leaderboard!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar6" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+            </tr>
+            <tr>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="seenItAll" src="badges\SeenItAllBadge.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                Earning points is simply a routine now! Earn at least 500,000 points!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar7" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+                <th style="width: 10%"></th>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="s50" src="badges\50surveys.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                Answering surveys daily is easy! Complete 50 consecutive surveys!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar8" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+            </tr>
+            <tr>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="s100" src="badges\100surveys.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                Completed quite a few surveys now and still going strong! Complete 100 consecutive surveys!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar9" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+                <th style="width: 10%"></th>
+                <th style="width: 35%">
+                    <table>
+                        <tr>
+                            <th style="width:40%">
+                                <img id="s300" src="badges\300surveys.png" style="width:150px; height:100px">
+                            </th>
+                            <th style="width:60%">
+                                I've completed so many surveys that I've actually lost count! Complete 300 consecutive surveys!
+                            </th>
+                        </tr>
+                    </table>
+                    <div id="pbar" style="width:100%">
+                        <div id="pbar10" class="progbar">
+                            0%
+                        </div>
+                    </div>
+                    <br><br>
+                </th>
+            </tr>
+        </table>
+        <!--<Minigames portion>-->
+        <!--ADD CSS to put this section to the right of the profile info-->
+        <h3>Mini Games</h3>
+        <h5>Each costs 100 Points to play a game</h5>
+        <button onclick = "createSnakeMiniGame()">Snake Game</button>
+        <br>
+        <img src="snakeImage.png" alt="snake" width = "160" height = "110">
+
+        <br><br>
+        <button onclick="createTetrisMiniGame()">Tetris Game</button>
+        <br>
+        <img src="tetrisImage.jpeg" alt="tetris" width = "160" height = "110"> 
+        
+        </center>
+
+
+        <br><br><br>
+        <center>
+        <button onClick="loadHome()" type="button">Home Page</button>
+        <button onClick="loadIndex()" type="button">Survey</button>
+        <button onClick="loadSignOut()" type="button">Sign Out</button>
+        </center>
+        <br><br><br><br><br><br><br><br><br>
+        <!--<textarea id= "textarea" style="width:400px; height:80px"></textarea>-->
+    </body>
+</html>

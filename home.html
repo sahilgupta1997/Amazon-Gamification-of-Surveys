@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
+
+<script type="text/javascript">
+    AWS.config.update({
+        region: "us-east-1",
+        // The endpoint should point to the local or remote computer where DynamoDB (downloadable) is running.
+        //endpoint: 'https://sts.us-east-1.amazonaws.com',
+        /*
+        accessKeyId and secretAccessKey defaults can be used while using the downloadable version of DynamoDB. 
+        For security reasons, do not store AWS Credentials in your files. Use Amazon Cognito instead.
+        */
+        accessKeyId: "AKIAIX6MZFO2MPKPW3IA",
+        secretAccessKey: "g4LHQF3iKi3wtJZ1902BNIyPY77PcvNwvEMpuSfV"
+    });
+
+    var dynamodb = new AWS.DynamoDB();
+    var docClient = new AWS.DynamoDB.DocumentClient();
+
+    function loadProfile() {
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        var username = queries[0].substr(6)
+        var password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        var queryString = "?para1=" + username + "&para2=" + password;
+        window.location.href = "profile.html" + queryString;
+    }
+    function loadIndex() {
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        var username = queries[0].substr(6)
+        var password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        var queryString = "?para1=" + username + "&para2=" + password;
+        window.location.href = "index.html" + queryString;
+    }
+    function loadSignOut() {
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        var username = queries[0].substr(6)
+        var password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        var queryString = "?para1=" + username + "&para2=" + password;
+        window.location.href = "login.html" //+ queryString; remove parameters and bring user back to login page
+    }
+
+    var username = "Error: no user"
+    var password = ""
+    var points = -1
+    var rank = "Error: no rank"
+
+    var leader_names = []
+    var leader_pts = []
+
+    var count = 0
+    var all_users = []
+    var all_points = []
+
+    function getUserInfo() {
+    
+        //parse and retrieve user and pass from URL
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        username = queries[0].substr(6)
+        password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        document.getElementById("myUser").innerHTML = username;
+
+        //define some variables to retrieve from the table
+        var ScanParams = {
+            TableName: "UserInfo"
+        };
+        docClient.scan(ScanParams, onScan);
+
+        function onScan(err, data) {
+            if (err) {
+                console.log("an error occurred: ", err)
+                document.getElementById('textarea').innerHTML = "Failed to find user" + "\n" + JSON.stringify(err, undefined, 2);
+            } else {
+                document.getElementById('textarea').innerHTML = "Scan succeeded: " + "\n" + JSON.stringify(data, undefined, 2);
+                data.Items.forEach(function(user) {
+                    if(user.user == username && user.pass == password){
+                        //console.log("user found with response number: ", user.responseNumber)
+                        //document.getElementById("myRank").innerHTML = user.rank;
+                        document.getElementById("myPoints").innerHTML = user.points;
+                        points = user.points;
+                        //rank = user.rank
+                        //points = user.points
+                        if (points < 10000) {
+                            document.getElementById("myRank").innerHTML = "Novice";
+                        }
+                        if (points >= 10000 && points < 20000) {
+                            document.getElementById("myRank").innerHTML = "Apprentice";
+                        }
+                        else if (points >= 20000 && points < 50000 ) {
+                            document.getElementById("myRank").innerHTML = "Journeyman";
+                        }
+                        else if (points >= 50000 && points < 100000 ) {
+                            document.getElementById("myRank").innerHTML = "Craftsman";
+                        }
+                        else if (points >= 100000 && points < 500000 ) {
+                            document.getElementById("myRank").innerHTML = "Master Craftsman";
+                        }
+                        else if (points >= 500000) {
+                            document.getElementById("myRank").innerHTML = "Entrepreneur";
+                        }
+
+                        //http://jsfiddle.net/b794r/1/
+                    }
+                    
+                });
+                
+            }
+        }
+    }
+
+    function loadLeaderBoard() {
+        var queryString = decodeURIComponent(window.location.search); //parsing
+        queryString = queryString.substring(1);
+        var queries = queryString.split("&");
+        console.log(queries)
+        username = queries[0].substr(6)
+        password = queries[1].substr(6)
+        console.log(username)
+        console.log(password)
+        document.getElementById("myUser").innerHTML = username;
+
+        //define some variables to retrieve from the table
+        var ScanParams = {
+            TableName: "UserInfo"
+        };
+        docClient.scan(ScanParams, onScan);
+
+        function onScan(err, data) {
+            if (err) {
+                console.log("an error occurred: ", err)
+                document.getElementById('textarea').innerHTML = "Failed to find user" + "\n" + JSON.stringify(err, undefined, 2);
+            } else {
+                document.getElementById('textarea').innerHTML = "Scan succeeded: " + "\n" + JSON.stringify(data, undefined, 2);
+                data.Items.forEach(function(user) {
+                    all_users[count] = user.user
+                    all_points[count] = user.points
+                    count = count + 1
+                });
+                
+                var max = -1;
+                for (count = 0; count < 10; count++) {
+                    max = Math.max.apply(null, all_points);
+                    leader_pts[count] = max;
+                    leader_names[count] = all_users[all_points.indexOf(max)];
+                    all_users.splice(all_points.indexOf(max), 1);
+                    all_points.splice(all_points.indexOf(max), 1);
+                }
+                document.getElementById("lead_1_name").innerHTML = leader_names[0];
+                document.getElementById("lead_1_pts").innerHTML = leader_pts[0];
+                document.getElementById("lead_2_name").innerHTML = leader_names[1];
+                document.getElementById("lead_2_pts").innerHTML = leader_pts[1];
+                document.getElementById("lead_3_name").innerHTML = leader_names[2];
+                document.getElementById("lead_3_pts").innerHTML = leader_pts[2];
+                document.getElementById("lead_4_name").innerHTML = leader_names[3];
+                document.getElementById("lead_4_pts").innerHTML = leader_pts[3];
+                document.getElementById("lead_5_name").innerHTML = leader_names[4];
+                document.getElementById("lead_5_pts").innerHTML = leader_pts[4];
+                document.getElementById("lead_6_name").innerHTML = leader_names[5];
+                document.getElementById("lead_6_pts").innerHTML = leader_pts[5];
+                document.getElementById("lead_7_name").innerHTML = leader_names[6];
+                document.getElementById("lead_7_pts").innerHTML = leader_pts[6];
+                document.getElementById("lead_8_name").innerHTML = leader_names[7];
+                document.getElementById("lead_8_pts").innerHTML = leader_pts[7];
+
+                
+                /*
+                document.getElementById("lead_1_name").innerHTML = all_users[5];
+                document.getElementById("lead_1_pts").innerHTML = all_points[5];
+                document.getElementById("lead_2_name").innerHTML = all_users[6];
+                document.getElementById("lead_2_pts").innerHTML = all_points[6];
+                document.getElementById("lead_3_name").innerHTML = all_users[7];
+                document.getElementById("lead_3_pts").innerHTML = all_points[7];
+                document.getElementById("lead_4_name").innerHTML = all_users[8];
+                document.getElementById("lead_4_pts").innerHTML = all_points[8];
+                document.getElementById("lead_5_name").innerHTML = all_users[9];
+                document.getElementById("lead_5_pts").innerHTML = all_points[9];
+                */
+            }
+        }
+    }
+
+</script>
+
+
+
+<style>
+    body {
+        background-color: rgb(35, 47, 62);
+    }
+	
+
+	
+	img {
+	border-radius: 90%;
+	width: 100px;
+	height: 100px;
+	background-size: cover;
+	
+	}
+	
+    .row:after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+	
+	
+    
+    table, th, td {
+    border: 0px solid black;
+    padding: 12px 15px;
+	align: middle;
+    }
+	
+
+	table{
+    background-color: rgba(255, 153, 61);
+	border-collapse:collapse;
+	margin: 25px 0;
+	font-size: 0.9em;
+	min-width:400px;
+	border-radius: 5px 5px 0 0;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    font-family: sans-serif; 
+    }
+	
+	th {
+	background-color: rgba(255, 153, 61);
+	color: #ffffff;
+	text-align: middle;
+	font-weight: bold;
+	}
+
+	table tbody tr {
+    border-bottom: 1px solid #dddddd;
+	}
+   
+   table tbody tr:nth-of-type(even) {
+	background-color: #f3f3f3;
+	}
+
+
+	table tbody tr:last-of-type {
+    border-bottom: 2px solid #009879;
+	}
+	
+	table tbody tr.active-row {
+    font-weight: bold;
+    color: #009879;
+	}
+
+	
+    button {
+    display: button;
+    width: 33%;
+    border: none;
+    background-color: rgb(255, 153, 61); 
+    padding: 14px 28px;
+    font-size: 16px;
+    cursor: pointer;
+    text-align: center;
+    }
+	
+	
+    h2{
+        color: #FEBD69;
+    }
+	
+    p{
+        color: #FEBD69;
+    }
+    
+</style>
+
+
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="description" content="Welcome to Seller Central">     
+        
+        <title>Amazon Gamification Test Page</title>
+        <title>Font Face</title>
+        
+    </head>
+    <button onClick="loadProfile()" type="button">Profile Page</button>
+    <button onClick="loadIndex()" type="button">Survey</button>
+    <button onClick="loadSignOut()" type="button">Sign Out</button>
+    <body onload="getUserInfo();loadLeaderBoard();">
+            <font face = "Georgia" size = "5"><h2><u><center>Amazon Seller's Central Surveys</center></u></h2></font>
+        <br/>
+		
+		
+	
+	   
+        <table align="right">
+        <tr>
+            <th>Username</th>
+            <th>Points</th>
+        </tr>
+        <tr>
+            <td style="width:300px"><center><span id="lead_1_name"></span></center></td>
+            <td style="width:300px"><center><span id="lead_1_pts"></span></center></td>
+        </tr>
+        <tr>
+            <td style="width:300px"><center><span id="lead_2_name"></span></center></td>
+            <td style="width:300px"><center><span id="lead_2_pts"></span></center></td>
+        </tr>
+        <tr>
+            <td style="width:300px"><center><span id="lead_3_name"></span></center></td>
+            <td style="width:300px"><center><span id="lead_3_pts"></span></center></td>
+        </tr>
+        <tr>
+            <td style="width:300px"><center><span id="lead_4_name"></span></center></td>
+            <td style="width:300px"><center><span id="lead_4_pts"></span></center></td>
+        </tr>
+        <tr>
+            <td style="width:300px"><center><span id="lead_5_name"></span></center></td>
+            <td style="width:300px"><center><span id="lead_5_pts"></span></center></td>
+        </tr>
+        <tr>
+            <td style="width:300px"><center><span id="lead_6_name"></span></center></td>
+            <td style="width:300px"><center><span id="lead_6_pts"></span></center></td>
+        </tr>
+        <tr>
+            <td style="width:300px"><center><span id="lead_7_name"></span></center></td>
+            <td style="width:300px"><center><span id="lead_7_pts"></span></center></td>
+        </tr>
+        <tr>
+            <td style="width:300px"><center><span id="lead_8_name"></span></center></td>
+            <td style="width:300px"><center><span id="lead_8_pts"></span></center></td>
+        </tr>
+        </table>
+        <div class = "row">
+		
+
+
+ <table align = "middle">
+	  <tr>
+		<th>
+		<font face= "Verdana" size = "5"> 
+		</font>
+		Achievements </th>
+		
+	  </tr>
+	  
+	  <tr>
+		<th>
+	  <image src ="avatar.png"/>
+		</th>
+	  </tr>
+	  
+	  <tr>
+	  <th>
+	  <p>
+
+
+	  <font face = "Verdana" size = "3"><label><center><span id="myUser" style="font-weight: bold;"></span></center></label></font>
+                    
+		</p>
+      </th>
+	 </tr>
+	 
+	 <th>
+	 <label>
+	 <image src ="Hidden key to success.png"/>
+	 <image src = "Chief.png"/>
+	 <image src = "Experienced.png"/>
+	
+	 </th>
+	 
+</table>
+	   
+		<!--
+            <div class="column">
+                <fieldset style="height:580px">
+                    <p>
+                        <font face = "Verdana" size = "3"><label><center><span id="myUser" style="font-weight: bold;"></span></center></label></font>
+                    </p>
+                    <p>
+                        <font face = "Verdana" size = "3"><label><center><span id="myRank" style="font-weight: bold;"></span></center></label></font>
+                    </p>
+                    <p>
+                        <font face = "Verdana" size = "3"><label><center><span id="myPoints" style="font-weight: bold;"></span></center></label></font>
+                    </p>
+                    <p>
+                        <font face = "Verdana" size = "4"><label><center>Achievements:</center></label></font>
+						<img src="wood.png" alt="wood badge" style="width:100px;height:100px;">
+						  <img src="bronze.png" alt="bronze badge" style="width:100px;height:100px;">
+						   <img src="silver.png" alt="silver badge" style="width:100px;height:100px;">
+						   <img src="gold.png" alt="gold badge" style="width:100px;height:100px;">
+                    </p>
+                    <br/><br/><br/><br/><br/><br/><br/>-->
+					
+					
+					
+                    <!--
+                    <p>
+                        
+                        <button onClick="addNewUser()" type="button">Register</button>
+                    </p>
+                    -->
+                </fieldset>
+            </div>
+            <!--<img src="asc_webss.png" alt="Example Amazon Seller Central Webpage">  FILLER IMAGE-->
+            <!--<div class="column"></div><div class="column"></div>-->
+        </div>
+        <div class = "row">
+            <br/><br/><br/><br/><br/><br/><br/><br/>
+            <p><b><i>Amazon did not make this website. This website is created by an ASU Capstone group for testing purposes.</i></b></p>
+            <br/>
+            <textarea readonly id= "textarea" style="width:400px; height:200px"></textarea>
+        </div>
+
+        <p>
+           
+            
+        </p>
+
+    </body>
+
+</html>

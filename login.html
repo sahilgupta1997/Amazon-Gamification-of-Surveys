@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<style>
+    body {
+      background-color: rgb(35, 47, 62);
+      
+    }
+    button {
+    display: button;
+    border: black;
+    background-color: rgb(255, 153, 61); 
+    padding: 14px 28px;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: center;
+    }
+    h1{
+        color: #FEBD69;
+    }
+    h2{
+        color: #FEBD69;
+    }
+    label{
+        color: #FEBD69;
+    }
+
+
+</style>
+<html>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
+    <script type="text/javascript">
+        AWS.config.update({
+            region: "us-east-1",
+            // The endpoint should point to the local or remote computer where DynamoDB (downloadable) is running.
+            //endpoint: 'https://sts.us-east-1.amazonaws.com',
+            /*
+            accessKeyId and secretAccessKey defaults can be used while using the downloadable version of DynamoDB. 
+            For security reasons, do not store AWS Credentials in your files. Use Amazon Cognito instead.
+            */
+            accessKeyId: "AKIAIX6MZFO2MPKPW3IA",
+            secretAccessKey: "g4LHQF3iKi3wtJZ1902BNIyPY77PcvNwvEMpuSfV"
+        });
+        var dynamodb = new AWS.DynamoDB();
+        var docClient = new AWS.DynamoDB.DocumentClient();
+
+        /*function loadIndex() {
+            var queryString = "?para1=" + document.getElementById("username").value + "&para2=" + document.getElementById("password").value;
+            window.location.href = "index.html" + queryString;
+        }*/
+        function loadHomePage(){
+            var queryString = "?para1=" + document.getElementById("username").value + "&para2=" + document.getElementById("password").value;
+            window.location.href = "home.html" + queryString;
+        }
+        function createAccount() {
+            var ScanParams = {
+                TableName: "UserInfo"
+            };
+            docClient.scan(ScanParams, onScan);
+        
+            function onScan(err, data) {
+                if (err) {
+                    console.log("an error occurred: ", err)
+                } else {
+                    // Print all the movies
+                    console.log("scan succeeded: ", data)
+                    userFound = false
+                    data.Items.forEach(function(user) {
+                        if(user.user == document.getElementById("username").value && user.pass == document.getElementById("password").value){
+                            userFound = true
+                        }
+                    });
+                    if (!userFound){
+                        var params = {
+                            TableName :"UserInfo",
+                            Item: {
+                                "user": document.getElementById("username").value,
+                                "points": 0,
+                                "rank": "Novice",
+                                "pass": document.getElementById("password").value,
+                                "responseNumber": 0
+                            }
+                        };
+                        docClient.put(params, function(err, data) {
+                            if (err) {
+                                console.log(error)
+                            } else {
+                                console.log(data)
+                            }
+                        });
+                    }
+
+                }
+            }
+        }
+    </script>
+    <!--justify the whole page to be centered-->
+    <style>
+        .content {
+          max-width: 500px;
+          margin: auto;
+        }
+        </style>
+        <body>
+        
+    <div class="content">
+          <!-- Page content -->
+      
+    <head>
+        <meta charset="UTF-8">
+        <meta name="description" content="(ASU Capstone) Team Gamification of Surveys: Mock Test Website">
+        <title>Amazon Gamification Test Page</title>
+    </head>
+    
+    <body>
+        <h1><b><u>Amazon Seller's Central Surveys</u></b></h1>
+        <br/>
+        <fieldset>
+            <legend align="left"><h2>Please Login</h2></legend>
+            <p>
+                <label>Username:</label>
+                <input id="username" type = "text" id = "user" />
+            </p>
+            <p>
+                <label>Password:</label>
+                <input id="password" type = "password" id = "pass" />
+            </p>
+            <p>
+                <button onClick="loadHomePage()" type="button">Login</button> 
+            </p>
+            <p>
+                <button onClick="createAccount()" type="button">Create Account</button>
+            </p>
+        </fieldset>
+        <br/><br/><br/><br/><br/><br/><br/><br/>
+        <p><b><i>Amazon did not make this website. This website is created by an ASU Capstone group for testing purposes.</i></b></p>
+
+    </body>
+</div>
+</html>
